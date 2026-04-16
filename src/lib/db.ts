@@ -43,7 +43,18 @@ export async function initDb() {
   });
   
   const isDocker = process.env.DOCKER === 'true';
-  dbPath = process.env.SQLITE_PATH || (isDocker ? '/app/data/finance.db' : path.join(process.cwd(), 'finance.db'));
+  const dbFileName = process.env.SQLITE_FILE || 'finance.db';
+  let dbDir: string;
+  
+  if (process.env.SQLITE_PATH) {
+    dbDir = path.dirname(process.env.SQLITE_PATH);
+  } else if (isDocker) {
+    dbDir = '/app/data';
+  } else {
+    dbDir = process.env.SQLITE_FILE ? process.cwd() : path.join(process.cwd(), 'data');
+  }
+  
+  dbPath = process.env.SQLITE_PATH || path.join(dbDir, dbFileName);
   
   if (fs.existsSync(dbPath)) {
     const fileBuffer = fs.readFileSync(dbPath);

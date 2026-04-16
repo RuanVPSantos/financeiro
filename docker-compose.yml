@@ -4,7 +4,8 @@ services:
     container_name: financeiro-app
     restart: always
     environment:
-      - SQLITE_PATH=/app/data/finance.db
+      - DOCKER=true
+      - SQLITE_FILE=finance.db
     ports:
       - "3001:3000"
     volumes:
