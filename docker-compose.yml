@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    container_name: financeiro-app
+    restart: always
+    environment:
+      - SQLITE_PATH=/app/data/finance.db
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./data:/app/data

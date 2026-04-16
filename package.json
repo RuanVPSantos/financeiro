@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "seed:mock": "bash scripts/seed.sh",
+    "mock": "SQLITE_FILE=mock.db next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -11,16 +13,22 @@
   "dependencies": {
     "next": "16.2.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-number-format": "^5.4.5",
+    "react-number-input": "^15.5.1",
+    "recharts": "^3.8.1",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sql.js": "^1.4.11",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
