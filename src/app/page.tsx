@@ -76,9 +76,21 @@ export default function Home() {
   const [alertMsg, setAlertMsg] = useState<{ message: string; type?: 'error' | 'success' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
+  const [totals, setTotals] = useState<{
+    entrada: number;
+    saida: number;
+    entradaExecutada: number;
+    saidaExecutada: number;
+    porMes: { mes: string; entrada: number; saida: number; saldo: number }[];
+  } | null>(null);
+
   const fetchTransactions = async () => {
     const res = await fetch('/api/transactions');
     const data = await res.json();
+    const totalsHeader = res.headers.get('x-totals');
+    if (totalsHeader) {
+      setTotals(JSON.parse(totalsHeader));
+    }
     setTransactions(data);
     setLoading(false);
   };
@@ -124,15 +136,20 @@ export default function Home() {
     return `${meses[parseInt(mes) - 1]} ${ano}`;
   };
 
-  const totals = {
+  const totalsExibir = totals ? {
+    entrada: totals.entrada,
+    saida: totals.saida,
+    entradaExecutada: totals.entradaExecutada,
+    saidaExecutada: totals.saidaExecutada,
+  } : {
     entrada: filtered.filter(t => t.tipo === 'entrada').reduce((a, t) => a + t.valor, 0),
     saida: filtered.filter(t => t.tipo === 'saida').reduce((a, t) => a + t.valor, 0),
     entradaExecutada: filtered.filter(t => t.tipo === 'entrada' && t.status === 'executada').reduce((a, t) => a + t.valor, 0),
     saidaExecutada: filtered.filter(t => t.tipo === 'saida' && t.status === 'executada').reduce((a, t) => a + t.valor, 0),
   };
 
-  const saldoAtual = totals.entradaExecutada - totals.saidaExecutada;
-  const saldoPrevisto = totals.entrada - totals.saida;
+  const saldoAtual = totalsExibir.entradaExecutada - totalsExibir.saidaExecutada;
+  const saldoPrevisto = totalsExibir.entrada - totalsExibir.saida;
   const dataAtual = new Date().toISOString().split('T')[0];
   const vencidos = filtered.filter(t => t.tipo === 'saida' && t.status === 'nao_executada' && t.data < dataAtual).reduce((a, t) => a + t.valor, 0);
 
@@ -166,31 +183,11 @@ export default function Home() {
 
   const totalSubitems = form.subitems.reduce((a, s) => a + Number(s.valor || 0), 0);
 
-  const chartData = (() => {
-    const monthlyData: { [key: string]: { entrada: number; saida: number } } = {};
-    
-    transactions.forEach(t => {
-      const monthKey = t.data.substring(0, 7);
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { entrada: 0, saida: 0 };
-      }
-      if (t.tipo === 'entrada') {
-        monthlyData[monthKey].entrada += t.valor;
-      } else {
-        monthlyData[monthKey].saida += t.valor;
-      }
-    });
-    
-    const sortedKeys = Object.keys(monthlyData).sort().slice(-12);
-    
-    let acumulado = 0;
-    return sortedKeys.map(key => {
-      const [ano, mes] = key.split('-');
-      const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-      acumulado += monthlyData[key].entrada - monthlyData[key].saida;
-      return { name: `${meses[parseInt(mes) - 1]} `, ...monthlyData[key], saldo: acumulado };
-    });
-  })();
+  const chartData = totals?.porMes.slice(-12).map(m => {
+    const [, mes] = m.mes.split('-');
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return { name: `${meses[parseInt(mes) - 1]} `, entrada: m.entrada, saida: m.saida, saldo: m.saldo };
+  }) || [];
 
   const COLORS = ['#8b5cf6', '#ef4444', '#22c55e', '#f59e0b', '#3b82f6'];
 

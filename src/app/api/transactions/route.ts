@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTransactions, createTransaction, updateTransaction, deleteTransaction, toggleStatus, fixDates, initDb, NewTransaction } from '@/lib/db';
+import { getTransactions, createTransaction, updateTransaction, deleteTransaction, toggleStatus, fixDates, initDb, getTotals, NewTransaction } from '@/lib/db';
 
 let initialized = false;
 
@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, message: 'Datas corrigidas' });
   }
   const transactions = getTransactions();
-  return NextResponse.json(transactions);
+  const totals = getTotals(transactions);
+  return NextResponse.json(transactions, { headers: { 'x-totals': JSON.stringify(totals) } });
 }
 
 export async function POST(request: Request) {

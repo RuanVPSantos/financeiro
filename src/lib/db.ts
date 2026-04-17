@@ -59,10 +59,30 @@ export async function initDb() {
   if (fs.existsSync(dbPath)) {
     const fileBuffer = fs.readFileSync(dbPath);
     db = new SQL.Database(fileBuffer);
+    
+    db.run("UPDATE transactions SET data = substr(data, 7, 4) || '-' || substr(data, 4, 2) || '-' || substr(data, 1, 2) WHERE data LIKE '__/__/____'");
+    db.run("UPDATE transactions SET updatedAt = datetime('now') WHERE updatedAt IN ('Receita', 'Despesas')");
+    saveDb();
+    
+    const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values.map(v => v[0]) || [];
+    if (!tables.includes('subitems')) {
+      db.run(`
+        CREATE TABLE IF NOT EXISTS subitems (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transaction_id INTEGER NOT NULL,
+          descricao TEXT NOT NULL,
+          valor REAL NOT NULL,
+          categoria TEXT DEFAULT '',
+          subcategoria TEXT DEFAULT '',
+          FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+        )
+      `);
+      saveDb();
+    }
   } else {
     db = new SQL.Database();
     db.run(`
-      CREATE TABLE transactions (
+      CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo TEXT NOT NULL CHECK(tipo IN ('entrada', 'saida')),
         descricao TEXT NOT NULL,
@@ -76,7 +96,7 @@ export async function initDb() {
       )
     `);
     db.run(`
-      CREATE TABLE subitems (
+      CREATE TABLE IF NOT EXISTS subitems (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         transaction_id INTEGER NOT NULL,
         descricao TEXT NOT NULL,
@@ -124,6 +144,48 @@ export const getTransactions = (): Transaction[] => {
     ...t,
     subitems: subitems.filter((s: Subitem) => s.transaction_id === t.id)
   }));
+};
+
+export const getTotals = (transactions: Transaction[]) => {
+  const totals = {
+    entrada: 0,
+    saida: 0,
+    entradaExecutada: 0,
+    saidaExecutada: 0,
+    porCategoria: [] as { nome: string; valor: number }[],
+    porMes: [] as { mes: string; entrada: number; saida: number; saldo: number }[]
+  };
+  
+  transactions.forEach(t => {
+    const valor = t.valor;
+    if (t.tipo === 'entrada') {
+      totals.entrada += valor;
+      if (t.status === 'executada') totals.entradaExecutada += valor;
+    } else {
+      totals.saida += valor;
+      if (t.status === 'executada') totals.saidaExecutada += valor;
+    }
+  });
+  
+  const porMesObj: { [key: string]: { entrada: number; saida: number } } = {};
+  transactions.forEach(t => {
+    const mes = t.data.substring(0, 7);
+    if (!porMesObj[mes]) porMesObj[mes] = { entrada: 0, saida: 0 };
+    if (t.tipo === 'entrada') {
+      porMesObj[mes].entrada += t.valor;
+    } else {
+      porMesObj[mes].saida += t.valor;
+    }
+  });
+  
+  totals.porMes = Object.keys(porMesObj).sort().map(mes => ({
+    mes,
+    entrada: porMesObj[mes].entrada,
+    saida: porMesObj[mes].saida,
+    saldo: porMesObj[mes].entrada - porMesObj[mes].saida
+  }));
+  
+  return totals;
 };
 
 export const createTransaction = (t: NewTransaction): Transaction => {
