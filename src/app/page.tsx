@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 
 type Subitem = {
@@ -77,6 +77,7 @@ export default function Home() {
   } | null>(null);
 
   const [categorias, setCategorias] = useState<{ entrada: { nome: string; subcategorias: string[] }[]; saida: { nome: string; subcategorias: string[] }[] }>({ entrada: [], saida: [] });
+  const subcategoriaInputsRef = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const fetchTransactions = async () => {
     const res = await fetch('/api/transactions');
@@ -916,6 +917,18 @@ export default function Home() {
                               novo[categoriaTab][idx].subcategorias[subIdx] = e.target.value;
                               setCategoriasEditando(novo);
                             }}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                                novo[categoriaTab][idx].subcategorias.push('');
+                                setCategoriasEditando(novo);
+                                setTimeout(() => {
+                                  subcategoriaInputsRef.current[`${idx}-${subIdx + 1}`]?.focus();
+                                }, 50);
+                                e.preventDefault();
+                              }
+                            }}
+                            ref={el => { subcategoriaInputsRef.current[`${idx}-${subIdx}`] = el; }}
                             className="flex-1 bg-transparent text-sm px-2 py-1 border-b border-[var(--border)] focus:border-[var(--accent)] focus:outline-none transition-all duration-200"
                             placeholder="Subcategoria..."
                           />
