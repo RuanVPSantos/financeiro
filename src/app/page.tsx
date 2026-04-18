@@ -25,7 +25,7 @@ type Transaction = {
   subitems?: Subitem[];
 };
 
-const CATEGORIAS = {
+const CATEGORIAS_DEFAULT = {
   entrada: [
     { nome: 'Parcela', subcategorias: ['Recebida', 'Pendente'] },
     { nome: 'Manutenção', subcategorias: ['Serviço', 'Reparo'] },
@@ -47,6 +47,15 @@ const CATEGORIAS = {
     { nome: 'Outros', subcategorias: ['Higiene', 'Seguro', 'Impostos', 'Assinatura'] },
   ],
 };
+
+let CATEGORIAS: typeof CATEGORIAS_DEFAULT;
+try {
+  CATEGORIAS = typeof window !== 'undefined' && localStorage.getItem('categorias') 
+    ? JSON.parse(localStorage.getItem('categorias')!) 
+    : CATEGORIAS_DEFAULT;
+} catch {
+  CATEGORIAS = CATEGORIAS_DEFAULT;
+}
 
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -75,6 +84,21 @@ export default function Home() {
 
   const [alertMsg, setAlertMsg] = useState<{ message: string; type?: 'error' | 'success' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [showConfigCategorias, setShowConfigCategorias] = useState(false);
+  const [categoriaTab, setCategoriaTab] = useState<'entrada' | 'saida'>('saida');
+  const [categoriaExpandida, setCategoriaExpandida] = useState<number | null>(null);
+  const [categoriaAnimacao, setCategoriaAnimacao] = useState<'left' | 'right' | null>(null);
+  const [categoriasEditando, setCategoriasEditando] = useState<typeof CATEGORIAS>(JSON.parse(JSON.stringify(CATEGORIAS)));
+
+  const mudarCategoriaTab = (novaTab: 'entrada' | 'saida') => {
+    if (novaTab === categoriaTab) return;
+    setCategoriaAnimacao(novaTab === 'entrada' ? 'left' : 'right');
+    setTimeout(() => {
+      setCategoriaTab(novaTab);
+      setCategoriaExpandida(null);
+      setCategoriaAnimacao(null);
+    }, 150);
+  };
 
   const [totals, setTotals] = useState<{
     entrada: number;
@@ -343,6 +367,9 @@ export default function Home() {
               <button onClick={openNew} className="bg-[var(--accent)] text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity shrink-0">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 <span className="hidden xs:inline">Nova</span>
+              </button>
+              <button onClick={() => { setCategoriasEditando(JSON.parse(JSON.stringify(CATEGORIAS))); setShowConfigCategorias(true); }} className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-[var(--card-hover)] transition-colors" title="Categorias">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </button>
             </div>
             
@@ -835,6 +862,152 @@ export default function Home() {
                 className="flex-1 py-2.5 rounded-xl bg-[var(--expense)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfigCategorias && (
+        <div className="fixed inset-0 bg-black/70 glass flex items-center justify-center p-4 z-50" onClick={() => setShowConfigCategorias(false)}>
+          <div className="bg-[var(--bg)] rounded-2xl w-full max-w-md h-[70vh] border border-[var(--border)] animate-fade-in flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
+              <h2 className="text-xl font-semibold">Categorias</h2>
+              <button onClick={() => setShowConfigCategorias(false)} className="text-[var(--text-secondary)] hover:text-white p-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="flex border-b border-[var(--border)]">
+              <button
+                onClick={() => mudarCategoriaTab('saida')}
+                className={`flex-1 py-3 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-1 ${categoriaTab === 'saida' ? 'bg-[var(--expense)] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              >
+                <span className={`transition-transform duration-300 ${categoriaTab === 'saida' ? 'rotate-90' : ''}`}>▶</span>
+                Saídas
+              </button>
+              <button
+                onClick={() => mudarCategoriaTab('entrada')}
+                className={`flex-1 py-3 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-1 ${categoriaTab === 'entrada' ? 'bg-[var(--income)] text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              >
+                <span className={`transition-transform duration-300 ${categoriaTab === 'entrada' ? 'rotate-90' : ''}`}>▶</span>
+                Entradas
+              </button>
+            </div>
+
+            <div className={`flex-1 overflow-y-auto p-4 space-y-2 transition-all duration-150 ${categoriaAnimacao === 'left' ? 'translate-x-4 opacity-50' : categoriaAnimacao === 'right' ? '-translate-x-4 opacity-50' : ''}`}>
+              {categoriasEditando[categoriaTab].map((cat, idx) => (
+                <div key={idx} className="transition-all duration-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <button
+                      onClick={() => setCategoriaExpandida(categoriaExpandida === idx ? null : idx)}
+                      className="text-sm text-[var(--text-secondary)] hover:text-white transition-transform duration-300 hover:scale-110"
+                    >
+                      ▶
+                    </button>
+                    <input
+                      value={cat.nome}
+                      onChange={e => {
+                        const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                        novo[categoriaTab][idx].nome = e.target.value;
+                        setCategoriasEditando(novo);
+                      }}
+                      className="flex-1 bg-transparent px-3 py-2 text-base border-b border-[var(--border)] hover:border-[var(--text-secondary)] focus:border-[var(--accent)] focus:outline-none transition-all duration-200"
+                      placeholder="Categoria..."
+                    />
+                    <button
+                      onClick={() => {
+                        const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                        novo[categoriaTab].splice(idx, 1);
+                        setCategoriasEditando(novo);
+                      }}
+                      className="text-[var(--text-secondary)] hover:text-[var(--expense)] opacity-50 hover:opacity-100 transition-all duration-200 p-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <div className={`overflow-hidden transition-all duration-300 ease-in-out ${categoriaExpandida === idx ? 'max-h-40 opacity-100 ml-6' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-1 pt-1">
+                      {cat.subcategorias.map((sub, subIdx) => (
+                        <div key={subIdx} className="flex items-center gap-1 group">
+                          <input
+                            value={sub}
+                            onChange={e => {
+                              const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                              novo[categoriaTab][idx].subcategorias[subIdx] = e.target.value;
+                              setCategoriasEditando(novo);
+                            }}
+                            className="flex-1 bg-transparent text-sm px-2 py-1 border-b border-[var(--border)] focus:border-[var(--accent)] focus:outline-none transition-all duration-200"
+                            placeholder="Subcategoria..."
+                          />
+                          <button
+                            onClick={() => {
+                              const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                              novo[categoriaTab][idx].subcategorias.splice(subIdx, 1);
+                              setCategoriasEditando(novo);
+                            }}
+                            className="text-[var(--text-secondary)] hover:text-[var(--expense)] opacity-0 group-hover:opacity-100 transition-all duration-200"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                          novo[categoriaTab][idx].subcategorias.push('');
+                          setCategoriasEditando(novo);
+                        }}
+                        className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors duration-200"
+                      >
+                        + subcategoria
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-2 border-t border-[var(--border)] shrink-0 flex justify-between items-center">
+              <button
+                onClick={() => {
+                  if (confirm('Voltar para padrão?')) {
+                    localStorage.removeItem('categorias');
+                    window.location.reload();
+                  }
+                }}
+                className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors duration-200 px-2 py-1"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => {
+                  const novo = JSON.parse(JSON.stringify(categoriasEditando));
+                  novo[categoriaTab].push({ nome: 'Nova Categoria', subcategorias: [] });
+                  setCategoriasEditando(novo);
+                }}
+                className="text-lg text-[var(--text-secondary)] hover:text-white transition-colors duration-200 px-2 py-1"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="p-3 border-t border-[var(--border)] shrink-0 flex justify-end gap-3">
+              <button
+                onClick={() => setShowConfigCategorias(false)}
+                className="text-sm text-[var(--text-secondary)] hover:text-white transition-colors duration-200 px-4 py-2"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem('categorias', JSON.stringify(categoriasEditando));
+                  setShowConfigCategorias(false);
+                  window.location.reload();
+                }}
+                className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity duration-200"
+              >
+                Salvar
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@
 
 - Cadastro e gerenciamento de transações financeiras
 - Categorização de receitas e despesas
+- **Categorias customizáveis** (nome + subcategorias)
 - Visualização de gráficos e resumo mensal
 - Banco de dados local SQLite (via WebAssembly)
 - Modo desenvolvimento com dados mock para testes

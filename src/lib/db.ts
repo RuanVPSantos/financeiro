@@ -223,6 +223,8 @@ export const updateTransaction = (id: number, t: Partial<NewTransaction>): Trans
   const { subitems, ...rest } = t as any;
   const now = new Date().toISOString();
   
+  const valor = subitems?.reduce((a: number, s: any) => a + Number(s.valor || 0), 0) || 0;
+  
   if (Object.keys(rest).length > 0) {
     const fields = Object.keys(rest).map(k => `${k} = ?`).join(', ') + ', updatedAt = ?';
     const values = [...Object.values(rest), now, id];
@@ -242,6 +244,8 @@ export const updateTransaction = (id: number, t: Partial<NewTransaction>): Trans
       }
     }
   }
+  
+  run('UPDATE transactions SET valor = ? WHERE id = ?', [valor, id]);
   
   return getTransactionById(id)!;
 };
