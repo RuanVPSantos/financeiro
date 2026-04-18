@@ -65,6 +65,7 @@ export async function initDb() {
     saveDb();
     
     const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values.map(v => v[0]) || [];
+    
     if (!tables.includes('subitems')) {
       db.run(`
         CREATE TABLE IF NOT EXISTS subitems (
@@ -77,6 +78,50 @@ export async function initDb() {
           FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
         )
       `);
+      saveDb();
+    }
+    
+    if (!tables.includes('categorias')) {
+      db.run(`
+        CREATE TABLE IF NOT EXISTS categorias (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tipo TEXT NOT NULL CHECK(tipo IN ('entrada', 'saida')),
+          nome TEXT NOT NULL,
+          subcategorias TEXT DEFAULT '[]'
+        )
+      `);
+    }
+    
+    const catCount = (db.exec("SELECT COUNT(*) FROM categorias")[0]?.values[0]?.[0] as number) || 0;
+    if (catCount === 0) {
+      const categoriasEntrada = [
+        { nome: 'Parcela', subcategorias: ['Recebida', 'Pendente'] },
+        { nome: 'Manutenção', subcategorias: ['Serviço', 'Reparo'] },
+        { nome: 'Entrada', subcategorias: ['Principal', 'Extra'] },
+        { nome: 'Assinatura', subcategorias: ['Recorrente', 'Pontual'] },
+        { nome: 'Investimentos', subcategorias: ['Rendimentos', 'Dividendos', 'Juros'] },
+        { nome: 'Presentes', subcategorias: ['Dinheiro', 'Outro'] },
+      ];
+      const categoriasSaida = [
+        { nome: 'Moradia', subcategorias: ['Aluguel', 'Condomínio', 'IPTU', 'Luz', 'Água', 'Internet'] },
+        { nome: 'Transporte', subcategorias: ['Combustível', 'Uber', 'Ônibus', 'Estacionamento'] },
+        { nome: 'Alimentação', subcategorias: ['Supermercado', 'Delivery', 'In Loco'] },
+        { nome: 'Saúde', subcategorias: ['Plano de saúde', 'Medicamentos', 'Médico', 'Preventiva'] },
+        { nome: 'Educação', subcategorias: ['Faculdade', 'Curso', 'Livros', 'Material'] },
+        { nome: 'Lazer', subcategorias: ['Streaming', 'Cinema', 'Jogos', 'Bar'] },
+        { nome: 'Cartão', subcategorias: ['Parcelas', 'Compras', 'Anuidade'] },
+        { nome: 'Casa', subcategorias: ['Eletrodomésticos', 'Móveis', 'Decoração', 'Utensílios', 'Manutenção'] },
+        { nome: 'Ferramentas', subcategorias: ['Equipamentos', 'Software', 'Manutenção'] },
+        { nome: 'Outros', subcategorias: ['Higiene', 'Seguro', 'Impostos', 'Assinatura'] },
+      ];
+      
+      for (const cat of categoriasEntrada) {
+        db.run("INSERT INTO categorias (tipo, nome, subcategorias) VALUES (?, ?, ?)", ['entrada', cat.nome, JSON.stringify(cat.subcategorias)]);
+      }
+      for (const cat of categoriasSaida) {
+        db.run("INSERT INTO categorias (tipo, nome, subcategorias) VALUES (?, ?, ?)", ['saida', cat.nome, JSON.stringify(cat.subcategorias)]);
+      }
+      
       saveDb();
     }
   } else {
