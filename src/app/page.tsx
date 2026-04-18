@@ -25,38 +25,6 @@ type Transaction = {
   subitems?: Subitem[];
 };
 
-const CATEGORIAS_DEFAULT = {
-  entrada: [
-    { nome: 'Parcela', subcategorias: ['Recebida', 'Pendente'] },
-    { nome: 'Manutenção', subcategorias: ['Serviço', 'Reparo'] },
-    { nome: 'Entrada', subcategorias: ['Principal', 'Extra'] },
-    { nome: 'Assinatura', subcategorias: ['Recorrente', 'Pontual'] },
-    { nome: 'Investimentos', subcategorias: ['Rendimentos', 'Dividendos', 'Juros'] },
-    { nome: 'Presentes', subcategorias: ['Dinheiro', 'Outro'] },
-  ],
-  saida: [
-    { nome: 'Moradia', subcategorias: ['Aluguel', 'Condomínio', 'IPTU', 'Luz', 'Água', 'Internet'] },
-    { nome: 'Transporte', subcategorias: ['Combustível', 'Uber', 'Ônibus', 'Estacionamento'] },
-    { nome: 'Alimentação', subcategorias: ['Supermercado', 'Delivery', 'In Loco'] },
-    { nome: 'Saúde', subcategorias: ['Plano de saúde', 'Medicamentos', 'Médico', 'Preventiva'] },
-    { nome: 'Educação', subcategorias: ['Faculdade', 'Curso', 'Livros', 'Material'] },
-    { nome: 'Lazer', subcategorias: ['Streaming', 'Cinema', 'Jogos', 'Bar'] },
-    { nome: 'Cartão', subcategorias: ['Parcelas', 'Compras', 'Anuidade'] },
-    { nome: 'Casa', subcategorias: ['Eletrodomésticos', 'Móveis', 'Decoração', 'Utensílios', 'Manutenção'] },
-    { nome: 'Ferramentas', subcategorias: ['Equipamentos', 'Software', 'Manutenção'] },
-    { nome: 'Outros', subcategorias: ['Higiene', 'Seguro', 'Impostos', 'Assinatura'] },
-  ],
-};
-
-let CATEGORIAS: typeof CATEGORIAS_DEFAULT;
-try {
-  CATEGORIAS = typeof window !== 'undefined' && localStorage.getItem('categorias') 
-    ? JSON.parse(localStorage.getItem('categorias')!) 
-    : CATEGORIAS_DEFAULT;
-} catch {
-  CATEGORIAS = CATEGORIAS_DEFAULT;
-}
-
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +76,8 @@ export default function Home() {
     porMes: { mes: string; entrada: number; saida: number; saldo: number }[];
   } | null>(null);
 
+  const [categorias, setCategorias] = useState<{ entrada: { nome: string; subcategorias: string[] }[]; saida: { nome: string; subcategorias: string[] }[] }>({ entrada: [], saida: [] });
+
   const fetchTransactions = async () => {
     const res = await fetch('/api/transactions');
     const data = await res.json();
@@ -122,6 +92,7 @@ export default function Home() {
   const fetchCategorias = async () => {
     const res = await fetch('/api/transactions?categorias=true');
     const data = await res.json();
+    setCategorias(data);
     setCategoriasEditando(data);
   };
 
@@ -184,7 +155,7 @@ export default function Home() {
   const dataAtual = new Date().toISOString().split('T')[0];
   const vencidos = filtered.filter(t => t.tipo === 'saida' && t.status === 'nao_executada' && t.data < dataAtual).reduce((a, t) => a + t.valor, 0);
 
-  const porCategoria = CATEGORIAS.saida.map(cat => {
+  const porCategoria = categorias.saida.map(cat => {
     let valor = 0;
     const subcategorias: { nome: string; valor: number }[] = [];
 
@@ -459,7 +430,7 @@ export default function Home() {
                     >
                       Todas
                     </button>
-                    {CATEGORIAS.saida.map(cat => (
+                    {categorias.saida.map(cat => (
                       <button
                         key={cat.nome}
                         onClick={() => setFiltroCategoria(c => c.includes(cat.nome) ? c.filter(x => x !== cat.nome) : [...c, cat.nome])}
@@ -781,7 +752,7 @@ export default function Home() {
                               className="w-full px-3 py-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg text-sm cursor-pointer focus:outline-none focus:border-[var(--accent)] transition-all"
                             >
                               <option value="">Categoria</option>
-                              {(form.tipo === 'entrada' ? CATEGORIAS.entrada : CATEGORIAS.saida).map(cat => (
+                              {(form.tipo === 'entrada' ? categorias.entrada : categorias.saida).map((cat: any) => (
                                 <option key={cat.nome} value={cat.nome}>{cat.nome}</option>
                               ))}
                             </select>
@@ -792,7 +763,7 @@ export default function Home() {
                                 className="w-full px-3 py-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-lg text-sm cursor-pointer focus:outline-none focus:border-[var(--accent)] transition-all"
                               >
                                 <option value="">Subcategoria</option>
-                                {(form.tipo === 'entrada' ? CATEGORIAS.entrada : CATEGORIAS.saida).find(c => c.nome === item.categoria)?.subcategorias.map(sub => (
+                                {(form.tipo === 'entrada' ? categorias.entrada : categorias.saida).find((c: any) => c.nome === item.categoria)?.subcategorias.map((sub: string) => (
                                   <option key={sub} value={sub}>{sub}</option>
                                 ))}
                               </select>
