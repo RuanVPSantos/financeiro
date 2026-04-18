@@ -88,7 +88,7 @@ export default function Home() {
   const [categoriaTab, setCategoriaTab] = useState<'entrada' | 'saida'>('saida');
   const [categoriaExpandida, setCategoriaExpandida] = useState<number | null>(null);
   const [categoriaAnimacao, setCategoriaAnimacao] = useState<'left' | 'right' | null>(null);
-  const [categoriasEditando, setCategoriasEditando] = useState<typeof CATEGORIAS>(JSON.parse(JSON.stringify(CATEGORIAS)));
+  const [categoriasEditando, setCategoriasEditando] = useState<{ entrada: { nome: string; subcategorias: string[] }[]; saida: { nome: string; subcategorias: string[] }[] } | null>(null);
 
   const mudarCategoriaTab = (novaTab: 'entrada' | 'saida') => {
     if (novaTab === categoriaTab) return;
@@ -119,7 +119,14 @@ export default function Home() {
     setLoading(false);
   };
 
+  const fetchCategorias = async () => {
+    const res = await fetch('/api/transactions?categorias=true');
+    const data = await res.json();
+    setCategoriasEditando(data);
+  };
+
   useEffect(() => { fetchTransactions(); }, []);
+  useEffect(() => { fetchCategorias(); }, []);
 
   const filtradasPorMes = transactions.filter(t => {
     const [ano, mes] = t.data.split('-');
@@ -368,7 +375,7 @@ export default function Home() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 <span className="hidden xs:inline">Nova</span>
               </button>
-              <button onClick={() => { setCategoriasEditando(JSON.parse(JSON.stringify(CATEGORIAS))); setShowConfigCategorias(true); }} className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-[var(--card-hover)] transition-colors" title="Categorias">
+              <button onClick={() => { setShowConfigCategorias(true); }} className="p-2 rounded-lg text-[var(--text-secondary)] hover:text-white hover:bg-[var(--card-hover)] transition-colors" title="Categorias">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </button>
             </div>
@@ -896,7 +903,7 @@ export default function Home() {
             </div>
 
             <div className={`flex-1 overflow-y-auto p-4 space-y-2 transition-all duration-150 ${categoriaAnimacao === 'left' ? 'translate-x-4 opacity-50' : categoriaAnimacao === 'right' ? '-translate-x-4 opacity-50' : ''}`}>
-              {categoriasEditando[categoriaTab].map((cat, idx) => (
+              {(categoriasEditando || { entrada: [], saida: [] })[categoriaTab].map((cat: any, idx: number) => (
                 <div key={idx} className="transition-all duration-200">
                   <div className="flex items-center gap-2 mb-1">
                     <button
@@ -908,6 +915,7 @@ export default function Home() {
                     <input
                       value={cat.nome}
                       onChange={e => {
+                        if (!categoriasEditando) return;
                         const novo = JSON.parse(JSON.stringify(categoriasEditando));
                         novo[categoriaTab][idx].nome = e.target.value;
                         setCategoriasEditando(novo);
@@ -928,7 +936,7 @@ export default function Home() {
                   </div>
                   <div className={`overflow-hidden transition-all duration-300 ease-in-out ${categoriaExpandida === idx ? 'max-h-40 opacity-100 ml-6' : 'max-h-0 opacity-0'}`}>
                     <div className="space-y-1 pt-1">
-                      {cat.subcategorias.map((sub, subIdx) => (
+                      {cat.subcategorias.map((sub: string, subIdx: number) => (
                         <div key={subIdx} className="flex items-center gap-1 group">
                           <input
                             value={sub}
@@ -970,10 +978,11 @@ export default function Home() {
 
             <div className="p-2 border-t border-[var(--border)] shrink-0 flex justify-between items-center">
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (confirm('Voltar para padrão?')) {
-                    localStorage.removeItem('categorias');
-                    window.location.reload();
+                    const res = await fetch('/api/transactions?categorias=true');
+                    const categorias = await res.json();
+                    setCategoriasEditando(categorias);
                   }
                 }}
                 className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors duration-200 px-2 py-1"
@@ -1000,10 +1009,9 @@ export default function Home() {
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  localStorage.setItem('categorias', JSON.stringify(categoriasEditando));
+                onClick={async () => {
+                  await fetch('/api/transactions', { method: 'POST', body: JSON.stringify(categoriasEditando) });
                   setShowConfigCategorias(false);
-                  window.location.reload();
                 }}
                 className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity duration-200"
               >

@@ -106,6 +106,43 @@ export async function initDb() {
         FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
       )
     `);
+    db.run(`
+      CREATE TABLE IF NOT EXISTS categorias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL CHECK(tipo IN ('entrada', 'saida')),
+        nome TEXT NOT NULL,
+        subcategorias TEXT DEFAULT '[]'
+      )
+    `);
+    
+    const categoriasEntrada = [
+      { nome: 'Parcela', subcategorias: ['Recebida', 'Pendente'] },
+      { nome: 'Manutenção', subcategorias: ['Serviço', 'Reparo'] },
+      { nome: 'Entrada', subcategorias: ['Principal', 'Extra'] },
+      { nome: 'Assinatura', subcategorias: ['Recorrente', 'Pontual'] },
+      { nome: 'Investimentos', subcategorias: ['Rendimentos', 'Dividendos', 'Juros'] },
+      { nome: 'Presentes', subcategorias: ['Dinheiro', 'Outro'] },
+    ];
+    const categoriasSaida = [
+      { nome: 'Moradia', subcategorias: ['Aluguel', 'Condomínio', 'IPTU', 'Luz', 'Água', 'Internet'] },
+      { nome: 'Transporte', subcategorias: ['Combustível', 'Uber', 'Ônibus', 'Estacionamento'] },
+      { nome: 'Alimentação', subcategorias: ['Supermercado', 'Delivery', 'In Loco'] },
+      { nome: 'Saúde', subcategorias: ['Plano de saúde', 'Medicamentos', 'Médico', 'Preventiva'] },
+      { nome: 'Educação', subcategorias: ['Faculdade', 'Curso', 'Livros', 'Material'] },
+      { nome: 'Lazer', subcategorias: ['Streaming', 'Cinema', 'Jogos', 'Bar'] },
+      { nome: 'Cartão', subcategorias: ['Parcelas', 'Compras', 'Anuidade'] },
+      { nome: 'Casa', subcategorias: ['Eletrodomésticos', 'Móveis', 'Decoração', 'Utensílios', 'Manutenção'] },
+      { nome: 'Ferramentas', subcategorias: ['Equipamentos', 'Software', 'Manutenção'] },
+      { nome: 'Outros', subcategorias: ['Higiene', 'Seguro', 'Impostos', 'Assinatura'] },
+    ];
+    
+    for (const cat of categoriasEntrada) {
+      db.run("INSERT INTO categorias (tipo, nome, subcategorias) VALUES (?, ?, ?)", ['entrada', cat.nome, JSON.stringify(cat.subcategorias)]);
+    }
+    for (const cat of categoriasSaida) {
+      db.run("INSERT INTO categorias (tipo, nome, subcategorias) VALUES (?, ?, ?)", ['saida', cat.nome, JSON.stringify(cat.subcategorias)]);
+    }
+    
     saveDb();
   }
   
@@ -281,6 +318,34 @@ export const CATEGORIAS = {
     { nome: 'Ferramentas', subcategorias: ['Equipamentos', 'Software', 'Manutenção'] },
     { nome: 'Outros', subcategorias: ['Higiene', 'Seguro', 'Impostos', 'Assinatura'] },
   ],
+};
+
+export const getCategorias = (): { entrada: { nome: string; subcategorias: string[] }[]; saida: { nome: string; subcategorias: string[] }[] } => {
+  const entrada: { nome: string; subcategorias: string[] }[] = [];
+  const saida: { nome: string; subcategorias: string[] }[] = [];
+  
+  const categorias = queryAll('SELECT tipo, nome, subcategorias FROM categorias ORDER BY id');
+  for (const cat of categorias) {
+    const item = { nome: cat.nome, subcategorias: JSON.parse(cat.subcategorias || '[]') };
+    if (cat.tipo === 'entrada') {
+      entrada.push(item);
+    } else {
+      saida.push(item);
+    }
+  }
+  
+  return { entrada, saida };
+};
+
+export const saveCategorias = (categorias: { entrada: { nome: string; subcategorias: string[] }[]; saida: { nome: string; subcategorias: string[] }[] }): void => {
+  run('DELETE FROM categorias', []);
+  
+  for (const cat of categorias.entrada) {
+    run('INSERT INTO categorias (tipo, nome, subcategorias) VALUES (?, ?, ?)', ['entrada', cat.nome, JSON.stringify(cat.subcategorias)]);
+  }
+  for (const cat of categorias.saida) {
+    run('INSERT INTO categorias (tipo, nome, subcategorias) VALUES (?, ?, ?)', ['saida', cat.nome, JSON.stringify(cat.subcategorias)]);
+  }
 };
 
 export const fixDates = (): void => {
